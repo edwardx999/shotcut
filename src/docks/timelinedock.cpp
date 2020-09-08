@@ -1241,6 +1241,54 @@ void TimelineDock::appendFromPlaylist(Mlt::Playlist *playlist, bool skipProxy)
     selectClipUnderPlayhead();
 }
 
+void TimelineDock::coalesceAdjacent(bool backward, int trackIndex)
+{
+    if (trackIndex < 0) {
+        trackIndex = currentTrack();
+    }
+    if(isTrackLocked(trackIndex)) {
+       return;
+    }
+    if (trackIndex < m_model.trackList().size()) {
+        int i = m_model.trackList().at(trackIndex).mlt_index;
+        QScopedPointer<Mlt::Producer> track(m_model.tractor()->track(i));
+        if (track) {
+            Mlt::Playlist playlist(*track);
+            if (backward && m_position <= 0) {
+                return;
+            }
+            int previous_index = playlist.get_clip_index_at(backward ? m_position - 1 : m_position);
+            int next_index = previous_index;
+            if(backward) {
+                next_index +=1 ;
+            } else {
+                previous_index--;
+            }
+            while(isBlank(trackIndex, previous_index) && previous_index > 0) {
+                --previous_index;
+            }
+            int const playlist_items = playlist.count();
+            while(next_index < playlist_items && isBlank(trackIndex, next_index)) {
+                ++next_index;
+            }
+            auto checkBlankIndex = [=] (int& index)
+            {
+                if(index >= playlist_items || isBlank(trackIndex, index)) {
+                    index = -1;
+                }
+            };
+            checkBlankIndex(previous_index);
+            checkBlankIndex(next_index);
+            if(previous_index >= 0 || next_index >= 0) {
+                MAIN.undoStack()->push(
+                    new Timeline::CoalesceAdjacentCommand(m_model, trackIndex, previous_index, next_index, m_position, backward));
+            }
+       } else {
+           return;
+       }
+   }
+}
+
 void TimelineDock::splitClip(int trackIndex, int clipIndex)
 {
     if (trackIndex < 0 || clipIndex < 0)

@@ -558,6 +558,68 @@ bool TrimClipOutCommand::mergeWith(const QUndoCommand *other)
     return true;
 }
 
+CoalesceAdjacentCommand::CoalesceAdjacentCommand(MultitrackModel& model, int trackIndex, int previousIndex, int nextIndex, int position, bool backward, QUndoCommand *parent)
+    : QUndoCommand(parent)
+    , m_model(model)
+    , m_trackIndex(trackIndex)
+    , m_previousClipIndex(previousIndex)
+    , m_nextClipIndex(nextIndex)
+    , m_position(position)
+    , m_backward(backward)
+    , m_undoHelper(m_model)
+{
+}
+
+void CoalesceAdjacentCommand::redo()
+{
+    m_undoHelper.recordBeforeState();
+    int i = m_model.trackList().at(m_trackIndex).mlt_index;
+    QScopedPointer<Mlt::Producer> track(m_model.tractor()->track(i));
+    Mlt::Playlist playlist(*track);
+    QScopedPointer<Mlt::ClipInfo> prev_info;
+    QScopedPointer<Mlt::ClipInfo> next_info;
+    if (m_previousClipIndex >= 0) {
+        prev_info.reset(playlist.clip_info(m_previousClipIndex));
+    }
+    if (m_nextClipIndex >= 0) {
+        next_info.reset(playlist.clip_info(m_nextClipIndex));
+    }
+    if (m_backward) {
+        if (prev_info) {
+            int const clip_end_frame = prev_info->start + prev_info->frame_count;
+            int const delta = clip_end_frame - m_position;
+            m_model.trimClipOut(m_trackIndex, m_previousClipIndex, delta, false, false);
+        }
+        if (next_info) {
+            int const clip_start_frame = next_info->start;
+            int const delta = m_position - clip_start_frame;
+            if(m_model.index(m_nextClipIndex, 0, m_model.index(m_trackIndex))
+                    .data(MultitrackModel::IsBlankRole).toBool()) {
+                m_model.trimClipIn(m_trackIndex, m_nextClipIndex + 1, delta, false, false);
+            } else {
+                m_model.trimClipIn(m_trackIndex, m_nextClipIndex, delta, false, false);
+            }
+        }
+    } else {
+        if (next_info) {
+            int const clip_start_frame = next_info->start;
+            int const delta = m_position - clip_start_frame;
+            m_model.trimClipIn(m_trackIndex, m_nextClipIndex, delta, false, false);
+        }
+        if (prev_info) {
+            int const clip_end_frame = prev_info->start + prev_info->frame_count;
+            int const delta = clip_end_frame - m_position;
+            m_model.trimClipOut(m_trackIndex, m_previousClipIndex, delta, false, false);
+        }
+    }
+    m_undoHelper.recordAfterState();
+}
+
+void CoalesceAdjacentCommand::undo()
+{
+    m_undoHelper.undoChanges();
+}
+
 SplitCommand::SplitCommand(MultitrackModel &model, int trackIndex,
     int clipIndex, int position, QUndoCommand *parent)
     : QUndoCommand(parent)

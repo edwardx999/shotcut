@@ -1861,6 +1861,8 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
         if (event->modifiers() == Qt::ControlModifier) {
             m_timelineDock->setSelection();
             m_timelineDock->model()->reload();
+        } else if (event->modifiers() == Qt::AltModifier) {
+            m_timelineDock->coalesceAdjacent(false);
         } else if ((event->modifiers() & Qt::ControlModifier) && (event->modifiers() & Qt::ShiftModifier)) {
             m_playlistDock->show();
             m_playlistDock->raise();
@@ -1968,9 +1970,13 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
         }
         break;
     case Qt::Key_S:
-        if (isMultitrackValid())
-            m_timelineDock->splitClip();
-        break;
+        if (isMultitrackValid()) {
+            if (event->modifiers() == Qt::AltModifier) {
+                m_timelineDock->coalesceAdjacent(true);
+            } else {
+                m_timelineDock->splitClip();
+            }
+        }
     case Qt::Key_U:
         if (event->modifiers() == Qt::ControlModifier) {
             m_timelineDock->show();

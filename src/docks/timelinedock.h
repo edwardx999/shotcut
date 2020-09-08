@@ -133,6 +133,7 @@ public slots:
     void insert(int trackIndex, int position = -1, const QString &xml = QString(), bool seek = true);
     void overwrite(int trackIndex, int position = -1, const QString &xml = QString(), bool seek = true);
     void appendFromPlaylist(Mlt::Playlist* playlist, bool skipProxy);
+    void coalesceAdjacent(bool backward, int trackIndex = -1);
     void splitClip(int trackIndex = -1, int clipIndex = -1);
     void fadeIn(int trackIndex, int clipIndex = -1, int duration = -1);
     void fadeOut(int trackIndex, int clipIndex = -1, int duration = -1);

@@ -260,6 +260,22 @@ private:
     bool m_redo;
 };
 
+class CoalesceAdjacentCommand : public QUndoCommand
+{
+public:
+    CoalesceAdjacentCommand(MultitrackModel& model, int trackIndex, int previousClipIndex, int nextClipIndex, int position, bool backward, QUndoCommand * parent = 0);
+    void redo();
+    void undo();
+private:
+    MultitrackModel& m_model;
+    int m_trackIndex;
+    int m_previousClipIndex;
+    int m_nextClipIndex;
+    int m_position;
+    bool m_backward;
+    UndoHelper m_undoHelper;
+};
+
 class SplitCommand : public QUndoCommand
 {
 public:
