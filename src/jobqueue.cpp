@@ -18,6 +18,7 @@
 #include "jobqueue.h"
 #include <QtWidgets>
 #include <Logger.h>
+#include <QMediaPlayer>
 #include "settings.h"
 
 JobQueue::JobQueue(QObject *parent) :
@@ -88,6 +89,30 @@ void JobQueue::onProgressUpdated(QStandardItem* standardItem, int percent)
     }
 }
 
+struct PlayerSetup {
+    QMediaPlayer player;
+    PlayerSetup()
+    {
+        player.setMedia(QUrl::fromLocalFile(QApplication::applicationDirPath() + "/done.wav"));
+        player.setVolume(10);
+    }
+    void play()
+    {
+        player.play();
+    }
+};
+
+PlayerSetup& get_tone_player()
+{
+    static PlayerSetup player;
+    return player;
+}
+
+void play_tone()
+{
+    get_tone_player().play();
+}
+
 void JobQueue::onFinished(AbstractJob* job, bool isSuccess, QString time)
 {
     QStandardItem* item = job->standardItem();
@@ -98,6 +123,7 @@ void JobQueue::onFinished(AbstractJob* job, bool isSuccess, QString time)
             item->setText(time.toString());
             item->setToolTip(tr("Elapsed Hours:Minutes:Seconds"));
             icon = QIcon(":/icons/oxygen/32x32/status/task-complete.png");
+            play_tone();
         } else if (job->stopped()) {
             item->setText(tr("stopped"));
             icon = QIcon(":/icons/oxygen/32x32/status/task-attempt.png");
