@@ -598,7 +598,6 @@ Item {
             minimumValue: 0.1
             maximumValue: 1000
             decimals: 1
-            spinnerWidth: 110
             suffix: ' %'
             onValueChanged: {
                 if (!blockUpdate && Math.abs(value - filterRect.width * 100 / profile.width) > 0.1) {
@@ -626,7 +625,7 @@ Item {
             enabled: scaleSlider.enabled
             onClicked: sizeUndoButton.clicked()
         }
-        Label { text: qsTr('(Fill only)') }
+        Label { text: '<small>' + qsTr('(Fill only)') + '</small>' }
 
         Label {
             text: qsTr('Size mode')
@@ -666,7 +665,7 @@ Item {
                 filter.set(distortProperty, 0)
             }
         }
-        Item { Layout.fillWidth: true }
+        Item { width: 1 }
 
         Label {
             text: qsTr('Horizontal fit')
@@ -696,7 +695,7 @@ Item {
                 filter.set(halignProperty, 'left')
             }
         }
-        Item { Layout.fillWidth: true }
+        Item { width: 1 }
 
         Label {
             text: qsTr('Vertical fit')
@@ -726,7 +725,7 @@ Item {
                 filter.set(valignProperty, 'top')
             }
         }
-        Item { Layout.fillWidth: true }
+        Item { width: 1 }
 
         Label {
             text: qsTr('Rotation')
@@ -740,7 +739,6 @@ Item {
             minimumValue: -360
             maximumValue: 360
             decimals: 1
-            spinnerWidth: 110
             suffix: qsTr(' °', 'degrees')
             onValueChanged: updateRotation(getPosition())
         }
@@ -776,7 +774,7 @@ Item {
             onClicked: bgColor.value = '#00000000'
         }
         Item {
-            Layout.fillWidth: true
+            width: 1
             visible: bgColor.visible
         }
 

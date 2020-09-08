@@ -1648,18 +1648,7 @@ void MainWindow::readWindowSettings()
         m_filtersDock->setFloating(false);
 #endif
     } else {
-        restoreState(Settings.windowStateDefault());
-        QDockWidget* audioMeterDock = findChild<QDockWidget*>("AudioPeakMeterDock");
-        if (audioMeterDock) {
-            audioMeterDock->show();
-            audioMeterDock->raise();
-        }
-        m_recentDock->show();
-        m_recentDock->raise();
-        m_filtersDock->show();
-        m_filtersDock->raise();
-        m_timelineDock->show();
-        m_timelineDock->raise();
+        restoreState(kLayoutEditingDefault);
     }
     LOG_DEBUG() << "end";
 }
@@ -2121,14 +2110,14 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
     case Qt::Key_0:
         if (!event->modifiers() ) {
             if (m_timelineDock->isVisible()) {
-                m_timelineDock->resetZoom();
+                emit m_timelineDock->zoomToFit();
             } else if (m_playlistDock->isVisible() && m_playlistDock->model()->rowCount() > 0) {
                 m_playlistDock->raise();
                 m_playlistDock->setIndex(9);
             }
         }
         if (m_keyframesDock->isVisible() && (event->modifiers() & Qt::AltModifier)) {
-            emit m_keyframesDock->resetZoom();
+            emit m_keyframesDock->zoomToFit();
         }
         break;
     case Qt::Key_X: // Avid Extract
@@ -2171,9 +2160,9 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
     case Qt::Key_Minus:
         if (m_timelineDock->isVisible() && !(event->modifiers() & Qt::AltModifier)) {
             if (event->modifiers() & Qt::ControlModifier)
-                m_timelineDock->makeTracksShorter();
+                emit m_timelineDock->makeTracksShorter();
             else
-                m_timelineDock->zoomOut();
+                emit m_timelineDock->zoomOut();
         }
         if (m_keyframesDock->isVisible() && (event->modifiers() & Qt::AltModifier)) {
             emit m_keyframesDock->zoomOut();
@@ -2183,9 +2172,9 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
     case Qt::Key_Plus:
         if (m_timelineDock->isVisible() && !(event->modifiers() & Qt::AltModifier)) {
             if (event->modifiers() & Qt::ControlModifier)
-                m_timelineDock->makeTracksTaller();
+                emit m_timelineDock->makeTracksTaller();
             else
-                m_timelineDock->zoomIn();
+                emit m_timelineDock->zoomIn();
         }
         if (m_keyframesDock->isVisible() && (event->modifiers() & Qt::AltModifier)) {
             emit m_keyframesDock->zoomIn();
@@ -3694,53 +3683,34 @@ void MainWindow::on_actionTutorials_triggered()
 void MainWindow::on_actionRestoreLayout_triggered()
 {
     auto mode = Settings.layoutMode();
-    if (mode > LayoutMode::Custom) {
+    if (mode != LayoutMode::Custom) {
         // Clear the saved layout for this mode
         Settings.setLayout(QString(kReservedLayoutPrefix).arg(mode), QByteArray(), QByteArray());
         // Reset the layout mode so the current layout is saved as custom when trigger action
         Settings.setLayoutMode();
-        switch (mode) {
-        case LayoutMode::Logging:
-            on_actionLayoutLogging_triggered();
-            break;
-        case LayoutMode::Editing:
-            on_actionLayoutEditing_triggered();
-            break;
-        case LayoutMode::Effects:
-            on_actionLayoutEffects_triggered();
-            break;
-        case LayoutMode::Color:
-            on_actionLayoutColor_triggered();
-            break;
-        case LayoutMode::Audio:
-            on_actionLayoutAudio_triggered();
-            break;
-        case LayoutMode::PlayerOnly:
-            on_actionLayoutPlayer_triggered();
-            break;
-        }
-    } else {
-        clearCurrentLayout();
-        restoreState(Settings.windowStateDefault());
+    }
+    switch (mode) {
+    case LayoutMode::Custom:
+        ui->actionLayoutEditing->setChecked(true);
+        Q_FALLTHROUGH();
+    case LayoutMode::Editing:
         on_actionLayoutEditing_triggered();
-        restoreState(Settings.windowStateDefault());
-        QDockWidget* audioMeterDock = findChild<QDockWidget*>("AudioPeakMeterDock");
-        if (audioMeterDock) {
-            audioMeterDock->show();
-            audioMeterDock->raise();
-        }
-        m_recentDock->show();
-        m_recentDock->raise();
-        m_filtersDock->show();
-        m_filtersDock->raise();
-        m_timelineDock->show();
-        m_timelineDock->raise();
-        ui->actionShowTitleBars->setChecked(true);
-        on_actionShowTitleBars_triggered(true);
-        ui->actionShowTextUnderIcons->setChecked(true);
-        on_actionShowTextUnderIcons_toggled(true);
-        ui->actionShowSmallIcons->setChecked(false);
-        on_actionShowSmallIcons_toggled(false);
+        break;
+    case LayoutMode::Logging:
+        on_actionLayoutLogging_triggered();
+        break;
+    case LayoutMode::Effects:
+        on_actionLayoutEffects_triggered();
+        break;
+    case LayoutMode::Color:
+        on_actionLayoutColor_triggered();
+        break;
+    case LayoutMode::Audio:
+        on_actionLayoutAudio_triggered();
+        break;
+    case LayoutMode::PlayerOnly:
+        on_actionLayoutPlayer_triggered();
+        break;
     }
 }
 
@@ -4197,7 +4167,7 @@ void MainWindow::on_actionLayoutLogging_triggered()
 //        resizeDocks({m_playlistDock, m_propertiesDock},
 //            {qFloor(width() * 0.25), qFloor(width() * 0.25)}, Qt::Horizontal);
     } else {
-        LOG_DEBUG() << state.toBase64();
+//        LOG_DEBUG() << state.toBase64();
         restoreState(state);
     }
 }
@@ -4211,7 +4181,7 @@ void MainWindow::on_actionLayoutEditing_triggered()
         restoreState(kLayoutEditingDefault);
 //        resetDockCorners();
     } else {
-        LOG_DEBUG() << state.toBase64();
+//        LOG_DEBUG() << state.toBase64();
         restoreState(state);
     }
 }
@@ -4276,6 +4246,34 @@ void MainWindow::on_actionLayoutPlayer_triggered()
 //        LOG_DEBUG() << state.toBase64();
         restoreState(state);
     }
+}
+
+void MainWindow::on_actionLayoutPlaylist_triggered()
+{
+    if (Settings.layoutMode() != LayoutMode::Custom) {
+        Settings.setLayout(QString(kReservedLayoutPrefix).arg(Settings.layoutMode()), QByteArray(), saveState());
+        Settings.setLayoutMode(LayoutMode::Custom);
+    }
+    clearCurrentLayout();
+    restoreState(Settings.windowStateDefault());
+    m_recentDock->show();
+    m_recentDock->raise();
+    m_playlistDock->show();
+    m_playlistDock->raise();
+}
+
+void MainWindow::on_actionLayoutClip_triggered()
+{
+    if (Settings.layoutMode() != LayoutMode::Custom) {
+        Settings.setLayout(QString(kReservedLayoutPrefix).arg(Settings.layoutMode()), QByteArray(), saveState());
+        Settings.setLayoutMode(LayoutMode::Custom);
+    }
+    clearCurrentLayout();
+    restoreState(Settings.windowStateDefault());
+    m_recentDock->show();
+    m_recentDock->raise();
+    m_filtersDock->show();
+    m_filtersDock->raise();
 }
 
 void MainWindow::on_actionLayoutAdd_triggered()
