@@ -400,8 +400,8 @@ bool MultitrackModel::trimClipInValid(int trackIndex, int clipIndex, int delta, 
     if (track) {
         Mlt::Playlist playlist(*track);
         QScopedPointer<Mlt::ClipInfo> info(playlist.clip_info(clipIndex));
-
-        if (!info || (info->frame_in + delta) < 0 || (info->frame_in + delta) > info->frame_out)
+        auto constexpr enable_clip_in_check = false;
+        if (!info || (enable_clip_in_check && (info->frame_in + delta) < 0) || (info->frame_in + delta) > info->frame_out)
             result = false;
         else if (delta < 0 && clipIndex <= 0)
             result = false;
@@ -446,16 +446,21 @@ int MultitrackModel::trimClipIn(int trackIndex, int clipIndex, int delta, bool r
 
         Q_ASSERT(otherTracksPosition == -1);
         otherTracksPosition = info->start;
-
-        if (info->frame_in + delta < 0)
+        int end_forward_delta = 0;
+        int new_frame_in = info->frame_in + delta;
+        if (new_frame_in < 0)
+        {
              // clamp to clip start
-            delta = -info->frame_in;
+            // delta = -info->frame_in;
+            end_forward_delta = -new_frame_in;
+            new_frame_in = 0;
+        }
         if (playlist.is_blank(clipIndex - 1) && -delta > playlist.clip_length(clipIndex - 1))
             // clamp to duration of blank space
             delta = -playlist.clip_length(clipIndex - 1);
 //        LOG_DEBUG() << "delta" << delta;
 
-        playlist.resize_clip(clipIndex, info->frame_in + delta, info->frame_out);
+        playlist.resize_clip(clipIndex, new_frame_in, info->frame_out + end_forward_delta);
 
         // Adjust filters.
         adjustClipFilters(*info->producer, filterIn, filterOut, delta, 0);
